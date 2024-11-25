@@ -11,10 +11,10 @@ Flow:
 """
 
 from conan.api.output import ConanOutput
+from conan.errors import ConanException
+from conan.internal.errors import AuthenticationException, ForbiddenException
 from conans.client.rest.remote_credentials import RemoteCredentials
 from conans.client.rest.rest_client import RestApiClient
-from conan.internal.errors import AuthenticationException, ForbiddenException
-from conan.errors import ConanException
 
 LOGIN_RETRIES = 3
 
@@ -27,6 +27,8 @@ class RemoteCreds:
         creds = getattr(remote, "_creds", None)
         if creds is None:
             user, token, _ = self._localdb.get_login(remote.url)
+            if token is None:
+                token = "unset"
             creds = user, token
             setattr(remote, "_creds", creds)
         return creds
@@ -37,7 +39,6 @@ class RemoteCreds:
 
 
 class ConanApiAuthManager:
-
     def __init__(self, requester, cache_folder, localdb, global_conf):
         self._requester = requester
         self._creds = RemoteCreds(localdb)
@@ -77,7 +78,7 @@ class ConanApiAuthManager:
             except AuthenticationException:
                 out = ConanOutput()
                 if user is None:
-                    out.error('Wrong user or password', error_type="exception")
+                    out.error("Wrong user or password", error_type="exception")
                 else:
                     out.error(f'Wrong password for user "{user}"', error_type="exception")
                 if not interactive:
